@@ -17,6 +17,14 @@ DATA_DIR.mkdir(exist_ok=True)
 
 SOUNDS_PER_CATEGORY = 3
 
+# Test duration presets: label -> sounds per category
+TEST_DURATIONS = {
+    "Quick (3 min)":    2,
+    "Standard (6 min)": 4,
+    "Extended (9 min)": 6,
+    "Full (12 min)":    8,
+}
+
 # ---------------------------------------------------------------------------
 # Spider-graph groupings
 # ---------------------------------------------------------------------------
@@ -455,7 +463,7 @@ def page_home():
     </div>
     """, unsafe_allow_html=True)
 
-    # --- Name entry and action buttons at the top ---
+    # --- Name entry, duration picker, and action buttons at the top ---
     username = st.text_input("Enter your name to begin", placeholder="e.g. Alex", key="home_user")
     if username:
         st.session_state["username"] = username.strip().lower().replace(" ", "_")
@@ -463,9 +471,18 @@ def page_home():
         if path.exists():
             history = json.loads(path.read_text())
             st.success(f"Welcome back! You have **{len(history)}** previous session(s).")
+
+        duration_labels = list(TEST_DURATIONS.keys())
+        selected = st.radio("Test length", duration_labels, index=1, horizontal=True,
+                            key="duration_radio")
+        n_per_cat = TEST_DURATIONS[selected]
+        total_sounds = n_per_cat * len(SPIDER_GROUPS)
+        st.caption(f"{total_sounds} sounds ({n_per_cat} per category, ~{total_sounds * 10 // 60} min)")
+
         col_a, col_b = st.columns(2)
         with col_a:
             if st.button("Start new test", type="primary", use_container_width=True):
+                st.session_state["sounds_per_cat"] = n_per_cat
                 st.session_state["page"] = "test"
                 st.session_state["test_items"] = None
                 st.session_state["current_idx"] = 0
@@ -837,10 +854,7 @@ def main():
                 st.warning("Enter your name on the home page first.")
 
         st.divider()
-        st.markdown(f"**Sounds per category:** {SOUNDS_PER_CATEGORY}")
-        new_n = st.slider("Adjust", 1, 8, SOUNDS_PER_CATEGORY, key="n_slider")
-        if new_n != SOUNDS_PER_CATEGORY:
-            st.session_state["sounds_per_cat"] = new_n
+        st.caption("Test length is set on the home page.")
 
     page = st.session_state["page"]
     if page == "home":
