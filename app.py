@@ -101,21 +101,24 @@ def sample_test(group_files: dict[str, list[str]], n: int = SOUNDS_PER_CATEGORY)
     return items
 
 
-def autoplay_audio_html(filepath: str, uid: str = "0") -> str:
-    """Audio player with unique ID per sound + JS to force playback."""
+def render_audio_player(filepath: str, _idx: int = 0):
+    """Render an audio player in an iframe component so it fully re-renders each sound."""
+    import streamlit.components.v1 as components
     with open(filepath, "rb") as f:
         data = base64.b64encode(f.read()).decode()
-    element_id = f"miso_audio_{uid}"
-    return (
-        f'<audio id="{element_id}" controls controlsList="nodownload" style="width:100%">'
-        f'<source src="data:audio/mp4;base64,{data}" type="audio/mp4">'
-        f"Your browser does not support the audio element.</audio>"
-        f"<script>"
-        f"var a=document.getElementById('{element_id}');"
-        f"a.load();"
-        f"a.play().catch(function(){{}});"
-        f"</script>"
-    )
+    html = f"""
+    <html><body style="margin:0;padding:0;background:transparent;">
+    <audio id="player" controls controlsList="nodownload"
+           style="width:100%;background:transparent;">
+        <source src="data:audio/mp4;base64,{data}" type="audio/mp4">
+    </audio>
+    <script>
+        var a = document.getElementById('player');
+        a.play().catch(function(){{}});
+    </script>
+    </body></html>
+    """
+    components.html(html, height=55, scrolling=False)
 
 
 def save_result(username: str, ratings: dict[str, list[int]]):
@@ -452,26 +455,7 @@ def page_home():
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("")
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("#### How it works")
-        st.markdown(
-            "1. Enter your name to create a profile\n"
-            "2. Listen to short sounds from 9 categories\n"
-            "3. Rate each on a 0-10 distress scale\n"
-            "4. Get a **spider graph** of your sensitivity profile\n"
-            "5. Retake weekly to track progress during training"
-        )
-    with col2:
-        st.markdown("#### Sound categories")
-        for cat, color in CAT_COLORS.items():
-            st.markdown(f'<span style="color:{color}">&#9679;</span> {cat}',
-                        unsafe_allow_html=True)
-
-    st.divider()
-
+    # --- Name entry and action buttons at the top ---
     username = st.text_input("Enter your name to begin", placeholder="e.g. Alex", key="home_user")
     if username:
         st.session_state["username"] = username.strip().lower().replace(" ", "_")
@@ -491,6 +475,25 @@ def page_home():
             if st.button("View my history", use_container_width=True):
                 st.session_state["page"] = "history"
                 st.rerun()
+
+    st.divider()
+
+    # --- Info columns below, symmetrical ---
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("#### How it works")
+        st.markdown(
+            "1. Enter your name to create a profile\n"
+            "2. Listen to short sounds from 9 categories\n"
+            "3. Rate each on a 0-10 distress scale\n"
+            "4. Get a **spider graph** of your sensitivity profile\n"
+            "5. Retake weekly to track progress during training"
+        )
+    with col2:
+        st.markdown("#### Sound categories")
+        for cat, color in CAT_COLORS.items():
+            st.markdown(f'<span style="color:{color}">&#9679;</span> {cat}',
+                        unsafe_allow_html=True)
 
     st.markdown(ATTRIBUTION_HTML, unsafe_allow_html=True)
 
@@ -531,8 +534,8 @@ def page_test():
         </div>
         """, unsafe_allow_html=True)
 
-        # Autoplay audio — unique ID forces browser to load new source each time
-        st.markdown(autoplay_audio_html(filepath, uid=str(idx)), unsafe_allow_html=True)
+        # Autoplay audio — rendered in iframe so it fully re-renders each sound
+        render_audio_player(filepath, idx)
 
         # Rating buttons row
         current_rating = st.session_state.get(f"btn_rating_{idx}", None)
