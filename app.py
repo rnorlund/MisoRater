@@ -101,13 +101,20 @@ def sample_test(group_files: dict[str, list[str]], n: int = SOUNDS_PER_CATEGORY)
     return items
 
 
-def autoplay_audio_html(filepath: str) -> str:
+def autoplay_audio_html(filepath: str, uid: str = "0") -> str:
+    """Audio player with unique ID per sound + JS to force playback."""
     with open(filepath, "rb") as f:
         data = base64.b64encode(f.read()).decode()
+    element_id = f"miso_audio_{uid}"
     return (
-        f'<audio autoplay controls controlsList="nodownload" style="width:100%">'
+        f'<audio id="{element_id}" controls controlsList="nodownload" style="width:100%">'
         f'<source src="data:audio/mp4;base64,{data}" type="audio/mp4">'
         f"Your browser does not support the audio element.</audio>"
+        f"<script>"
+        f"var a=document.getElementById('{element_id}');"
+        f"a.load();"
+        f"a.play().catch(function(){{}});"
+        f"</script>"
     )
 
 
@@ -524,8 +531,8 @@ def page_test():
         </div>
         """, unsafe_allow_html=True)
 
-        # Autoplay audio
-        st.markdown(autoplay_audio_html(filepath), unsafe_allow_html=True)
+        # Autoplay audio — unique ID forces browser to load new source each time
+        st.markdown(autoplay_audio_html(filepath, uid=str(idx)), unsafe_allow_html=True)
 
         # Rating buttons row
         current_rating = st.session_state.get(f"btn_rating_{idx}", None)
